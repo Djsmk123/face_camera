@@ -107,27 +107,24 @@ class FaceIdentifier {
     }
   }
 
-  static _extractFace(List<Face> faces) {
-    //List<Rect> rect = [];
+  static DetectedFace _extractFace(List<Face> faces) {
     bool wellPositioned = faces.isNotEmpty;
     Face? detectedFace;
 
     for (Face face in faces) {
-      // rect.add(face.boundingBox);
       detectedFace = face;
 
-      // Head is rotated to the right rotY degrees
-      if (face.headEulerAngleY! > 2 || face.headEulerAngleY! < -2) {
+      // Head is rotated to the right or left by more than 2 degrees
+      if (face.headEulerAngleY! > 5 || face.headEulerAngleY! < -5) {
         wellPositioned = false;
       }
 
-      // Head is tilted sideways rotZ degrees
-      if (face.headEulerAngleZ! > 2 || face.headEulerAngleZ! < -2) {
+      // Head is tilted sideways by more than 2 degrees
+      if (face.headEulerAngleZ! > 5 || face.headEulerAngleZ! < -5) {
         wellPositioned = false;
       }
 
-      // If landmark detection was enabled with FaceDetectorOptions (mouth, ears,
-      // eyes, cheeks, and nose available):
+      // Check if key landmarks are detected
       final FaceLandmark? leftEar = face.landmarks[FaceLandmarkType.leftEar];
       final FaceLandmark? rightEar = face.landmarks[FaceLandmarkType.rightEar];
       final FaceLandmark? bottomMouth =
@@ -137,6 +134,7 @@ class FaceIdentifier {
       final FaceLandmark? leftMouth =
           face.landmarks[FaceLandmarkType.leftMouth];
       final FaceLandmark? noseBase = face.landmarks[FaceLandmarkType.noseBase];
+
       if (leftEar == null ||
           rightEar == null ||
           bottomMouth == null ||
@@ -146,17 +144,29 @@ class FaceIdentifier {
         wellPositioned = false;
       }
 
+      // Check eye openness with reduced sensitivity
       if (face.leftEyeOpenProbability != null) {
-        if (face.leftEyeOpenProbability! < 0.5) {
+        if (face.leftEyeOpenProbability! < 0.3) {
           wellPositioned = false;
         }
       }
 
       if (face.rightEyeOpenProbability != null) {
-        if (face.rightEyeOpenProbability! < 0.5) {
+        if (face.rightEyeOpenProbability! < 0.3) {
           wellPositioned = false;
         }
       }
+    }
+
+    // If no faces detected, set wellPositioned to false
+    if (faces.isEmpty) {
+      wellPositioned = false;
+    }
+
+    // If a face is detected but not well-positioned, adjust the accuracy
+    if (detectedFace != null && !wellPositioned) {
+      wellPositioned = false;
+      // Implement any additional logic to decrease the accuracy or handle the face
     }
 
     return DetectedFace(wellPositioned: wellPositioned, face: detectedFace);
